@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
  Purpose: Blandford McKee solution
  Author: Brandon L. Barker

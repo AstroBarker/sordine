@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
  Purpose: Sedov solution
  Based on work by James R. Kamm (https://cococubed.com/papers/kamm_2000.pdf)
@@ -123,7 +124,7 @@ class Sedov:
     """
     Return shock radius (Eq 14)
     """
-    return (self.E / self.rho0 / self.alpha) ** (1.0 / self.j2w) * self.t ** (
+    return (self.E / (self.rho0 * self.alpha)) ** (1.0 / self.j2w) * self.t ** (
       2.0 / self.j2w
     )  # equation (14)
 
@@ -144,7 +145,7 @@ class Sedov:
         + self.alpha2 * self.c / (self.c * V - 1.0)
         - self.alpha1 * self.e / (1.0 - self.e * V)
       )
-      * (x1**self.alpha0 * x2**self.alpha2 * x3**self.alpha1) ** (-self.j2w)
+      * ((x1**self.alpha0) * (x2**self.alpha2) * (x3**self.alpha1)) ** (-self.j2w)
       * x2**self.alpha3
       * x3**self.alpha4
       * x4**self.alpha5
@@ -214,13 +215,19 @@ class Sedov:
 
   # End rho_
 
+  def rho2(self, rho1):
+    """
+    Eq 13
+    """
+    return rho1 * (self.gamma + 1.0) / (self.gamma - 1.0)  # equation (13)
+
   def Solve_(self):
     """
     Solve main state
     """
-    rho1 = self.rho0
-    rho2 = rho1 * (self.gamma + 1.0) / (self.gamma - 1.0)  # equation (13)
-    CUTOFF_ = 0.3  # below 0.3 * r_shock, set density to 0.0
+    rho1 = self.rho0 * self.r_sh**(-self.w)
+    rho2 = self.rho2(rho1)  # equation (13)
+    CUTOFF_ = 0.001  # below 0.3 * r_shock, set density to 0.0
     for i in range(len(self.r)):
       r = self.r[i]
       if r < CUTOFF_ * self.r_sh:
