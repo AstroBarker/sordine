@@ -3,7 +3,7 @@ A [percussion instrument](https://en.wikipedia.org/wiki/Sistrum) and also a repo
 
 # [Sedov-Taylor blast wave](sedov.py)
 Based on work by [James R. Kamm](https://cococubed.com/papers/kamm_2000.pdf).
-Supports density profiles of the from $rho(r) = rho_{0} r^{-w}$.
+Supports density profiles of the from $\rho(r) = \rho_{0} r^{-w}$.
 Supports planar (`j = 1`), cylindrical (`j = 2`), and spherical (`j = 3`) geometries.
 There are constraints on the density power law index. 
 See the paper.
@@ -22,7 +22,7 @@ Self similar solutions for pressure, as well as similarity variables, still need
 # [Blandford McKee Blast Wave](bmk.py)
 See [the paper](https://ui.adsabs.harvard.edu/abs/1976PhFl...19.1130B/abstract).
 Computes post-shock similarity variables and pressure, etc.
-Assumes density profiles of the from $rho(r) \approx r^{-k}$.
+Assumes density profiles of the from $\rho(r) \approx r^{-k}$.
 
 ## Usage
 ```python
