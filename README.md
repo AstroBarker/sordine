@@ -3,6 +3,7 @@ A [percussion instrument](https://en.wikipedia.org/wiki/Sistrum) and also a repo
 Contributions welcome.
 
 # [Sedov-Taylor blast wave](src/sedov.py)
+Self-similar solution for the Sedov-Taylor non-relativistic blast wave.
 Based on work by [James R. Kamm](https://cococubed.com/papers/kamm_2000.pdf).
 Supports density profiles of the from $\rho(r) = \rho_{0} r^{-w}$.
 Supports planar (`j = 1`), cylindrical (`j = 2`), and spherical (`j = 3`) geometries.
