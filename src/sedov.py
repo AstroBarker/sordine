@@ -36,7 +36,7 @@ class Sedov:
     >>> rho_solution = sedov.rho_sol
 
   TODO:
-    - Add more quantities of interest. 
+    - Add more quantities of interest.
   """
 
   def __init__(self, j, w, E, rho0, gamma, t_end, r_model):
@@ -145,7 +145,8 @@ class Sedov:
         + self.alpha2 * self.c / (self.c * V - 1.0)
         - self.alpha1 * self.e / (1.0 - self.e * V)
       )
-      * ((x1**self.alpha0) * (x2**self.alpha2) * (x3**self.alpha1)) ** (-self.j2w)
+      * ((x1**self.alpha0) * (x2**self.alpha2) * (x3**self.alpha1))
+      ** (-self.j2w)
       * x2**self.alpha3
       * x3**self.alpha4
       * x4**self.alpha5
@@ -225,7 +226,7 @@ class Sedov:
     """
     Solve main state
     """
-    rho1 = self.rho0 * self.r_sh**(-self.w)
+    rho1 = self.rho0 * self.r_sh ** (-self.w)
     rho2 = self.rho2(rho1)  # equation (13)
     CUTOFF_ = 0.001  # below 0.3 * r_shock, set density to 0.0
     for i in range(len(self.r)):
