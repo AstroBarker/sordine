@@ -22,7 +22,7 @@ Self similar solutions for pressure, as well as similarity variables, still need
 # [Blandford McKee Blast Wave](bmk.py)
 See [the paper](https://ui.adsabs.harvard.edu/abs/1976PhFl...19.1130B/abstract).
 Computes post-shock similarity variables and pressure, etc.
-Assumes density profiles of the from $\rho(r) \approx r^{-k}$.
+Assumes density profiles of the from $\rho(r) \propto r^{-k}$.
 
 ## Usage
 ```python
