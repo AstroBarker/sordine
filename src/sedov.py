@@ -75,7 +75,7 @@ class Sedov:
 
     # Following Kamm & Timmes, introduce TOL in logic for determining solution family
     # limits exponents later to not blow up
-    TOL = 1.0e-4
+    TOL = 1.0e-5
     solution_type = ""
     if self.V2 < self.Vstar - TOL:
       solution_type = "standard"
@@ -123,21 +123,17 @@ class Sedov:
     self.alpha4 = self.alpha1 * (j - w) * j2w / (w3 - w)
     self.alpha5 = (w * (gamma + 1.0) - 2.0 * j) / (w3 - w)
 
-    # the ennergy integrals can contain singularities at the lower bound.
-    # for now, offset by machine epsilon to avoid.
-    # TODO: Implement singularity removal ala https://cococubed.com/papers/la-ur-07-2849.pdf
-    # TODO: set Vmin appropriately
-    # eps = self.V0 * np.finfo(float).eps
-    # result1, err1 = integrate.quad(self.Integrand1_, self.V0 + eps, self.V2, epsabs = eps)
-    # result2, err2 = integrate.quad(self.Integrand2_, self.V0 + eps, self.V2, epsabs = eps)
-
-    # self.J1 = result1  # equation (67)
-    # self.J2 = result2  # equation (68)
-
-    # self.alpha = 1.0
     self.energy_integral_()
 
     self.r_sh = self.r_shock_()
+
+    # deal with vacuum radius
+    self.r_vac = 0.0
+    if self.family == "vacuum":
+      V_vac = 2.0 / self.j2w
+      self.r_vac = optimize.brentq(
+        self.target_v_, 1.0e-10, self.r_sh, args=(V_vac), xtol=1.0e-20
+      )
 
     # Do the solve
     self.solve_()
@@ -198,10 +194,15 @@ class Sedov:
   def energy_integral_(self):
     """
     return J1 and J2 energy integrals
+    # the ennergy integrals can contain singularities at the lower bound.
+    # for now, offset by machine epsilon to avoid.
+    # TODO: Implement singularity removal ala https://cococubed.com/papers/la-ur-07-2849.pdf
+    # TODO: set Vmin appropriately
     """
     self.J1 = 0.0
     self.J2 = 0.0
     self.alpha = 1.0
+
     if self.family == "singular":  # singular case, integration is analytic
       self.J1 = (self.gamma + 1.0) / (
         self.j * ((self.gamma - 1.0) * self.j + 2.0) ** 2.0
@@ -214,13 +215,15 @@ class Sedov:
       )
       if self.j != 1.0:
         self.alpha *= np.pi
+
     else:  # standard and vacuum, integrate numerically
       eps = self.V0 * np.finfo(float).eps
+      vmin = 2.0 / self.j2w if self.family == "vacuum" else self.V0
       self.J1, err1 = integrate.quad(
-        self.Integrand1_, self.V0 + eps, self.V2, epsabs=eps
+        self.Integrand1_, vmin + eps, self.V2, epsabs=eps
       )
       self.J2, err2 = integrate.quad(
-        self.Integrand2_, self.V0 + eps, self.V2, epsabs=eps
+        self.Integrand2_, vmin + eps, self.V2, epsabs=eps
       )
 
       if self.family == "singular":
@@ -241,13 +244,22 @@ class Sedov:
     """
     Root find r = r_sh lambda(V) for V
     """
-    # this is accounting for a factor of r in lambda for the singular case
-    fac = 1.0
-    if self.family == "singular":
-      fac = rx
+    # fac accounts for a factor of r in lambda for the singular case
+    fac = 1.0 if self.family != "singular" else rx
     return self.r_sh * fac * self.lambda_(V) - rx
 
   # End target_r_
+
+  def target_v_(self, rx, V_vac):
+    """
+    Solving for vacuum radius
+    Root find r_vac = r_sh lambda(V_vac) for r_vac
+    """
+    # fac accounts for a factor of r in lambda for the singular case
+    fac = 1.0 if self.family != "singular" else rx
+    return self.r_sh * fac * self.lambda_(V_vac) - rx
+
+  # End target_v_
 
   def lambda_(self, V):
     """
@@ -485,18 +497,22 @@ class Sedov:
 
     for i in range(len(self.r)):
       r = self.r[i]
+      if self.family == "vacuum" and r < self.r_vac:
+        continue
       if r >= 0.0 and r < self.r_sh:  # shocked region
-        V_x = self.Vstar
+        V_x = self.Vstar  # singular case
         if self.family != "singular":
+          vmin = self.V0 if self.family == "standard" else self.V2
+          vmax = self.V2 if self.family == "standard" else 2.0 / self.j2w
           V_x = optimize.brentq(
-            self.target_r_, self.V0, self.V2, args=(r), xtol=1.0e-20
+            self.target_r_, vmin, vmax, args=(r), xtol=1.0e-20
           )
 
         # update post-shock state
         # fac adjusts for missing r in singular lambda
         fac = r if self.family == "singular" else 1.0
         self.rho_sol[i] = fac * self.rho_(V_x, rho2)
-        self.p_sol[i] = self.p_(V_x, rho2)
+        self.p_sol[i] = fac * self.p_(V_x, rho2)
       else:  # unshocked region
         self.rho_sol[i] = self.rho0 * r ** (-self.w)
         self.p_sol[i] = self.p0
@@ -509,8 +525,8 @@ class Sedov:
 if __name__ == "__main__":
   # example:
   j = 3
-  w = 0.0
-  E = 0.851072
+  w = 2.4
+  E = 5.45670
   rho0 = 1.0
   p0 = 1.0e-5
   gamma = 1.4
