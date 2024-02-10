@@ -39,6 +39,7 @@ class Sedov:
   TODO:
     - Add velocity solution
     - Extend to singular and vacuum
+    - enums for fmaily etc
   """
 
   def __init__(self, j, w, E, rho0, p0, gamma, t_end, r_model):
@@ -58,8 +59,8 @@ class Sedov:
 
     # set up grid
     npoints_r = 2048
-    self.r = np.linspace(0.0, r_model, npoints_r, dtype=np.float128)
-    self.rho_sol = np.zeros(npoints_r, dtype=np.float128)  # density solution
+    self.r = np.linspace(0.0, r_model, npoints_r, dtype=np.longdouble)
+    self.rho_sol = np.zeros(npoints_r, dtype=np.longdouble)  # density solution
     self.p_sol = np.zeros(npoints_r)  # pressure solution
     self.t = t_end
 
@@ -102,44 +103,39 @@ class Sedov:
     self.a = j2w * (gamma + 1.0) / 4.0
     self.b = (gamma + 1.0) / (gamma - 1.0)
     self.c = j2w * gamma / 2.0
-    self.d = (j2w * (gamma + 1.0)) / (
-      j2w * (gamma + 1.0) - 2.0 * (2.0 + j * (gamma - 1.0))
-    )
+    if self.family == "singular":
+      self.d = 1.0
+    else:
+      self.d = (j2w * (gamma + 1.0)) / (
+        j2w * (gamma + 1.0) - 2.0 * (2.0 + j * (gamma - 1.0))
+      )
     self.e = (2.0 + j * (gamma - 1.0)) / 2.0
 
     # Equations (42)-(47)
     self.alpha0 = 2.0 / j2w
-    self.alpha2 = np.float128(-(gamma - 1.0) / (gamma * (w2 - w)))
-    self.alpha1 = np.float128(
+    self.alpha2 = -(gamma - 1.0) / (gamma * (w2 - w))
+    self.alpha1 = (
       (gamma * j2w)
       / (2.0 + j * (gamma - 1.0))
       * ((2.0 * (j * (2.0 - gamma) - w)) / (gamma * j2w**2) - self.alpha2)
     )
-    self.alpha3 = np.float128((j - w) / (gamma * (w2 - w)))
-    self.alpha4 = np.float128(self.alpha1 * (j - w) * j2w / (w3 - w))
-    self.alpha5 = np.float128((w * (gamma + 1.0) - 2.0 * j) / (w3 - w))
+    self.alpha3 = (j - w) / (gamma * (w2 - w))
+    self.alpha4 = self.alpha1 * (j - w) * j2w / (w3 - w)
+    self.alpha5 = (w * (gamma + 1.0) - 2.0 * j) / (w3 - w)
 
     # the ennergy integrals can contain singularities at the lower bound.
     # for now, offset by machine epsilon to avoid.
     # TODO: Implement singularity removal ala https://cococubed.com/papers/la-ur-07-2849.pdf
     # TODO: set Vmin appropriately
-    eps = self.V0 * np.finfo(float).eps
-    result1, err1 = integrate.quad(self.Integrand1_, self.V0 + eps, self.V2)
-    result2, err2 = integrate.quad(self.Integrand2_, self.V0 + eps, self.V2)
+    # eps = self.V0 * np.finfo(float).eps
+    # result1, err1 = integrate.quad(self.Integrand1_, self.V0 + eps, self.V2, epsabs = eps)
+    # result2, err2 = integrate.quad(self.Integrand2_, self.V0 + eps, self.V2, epsabs = eps)
 
-    self.J1 = result1  # equation (67)
-    self.J2 = result2  # equation (68)
+    # self.J1 = result1  # equation (67)
+    # self.J2 = result2  # equation (68)
 
-    self.alpha = 1.0
-    if self.family == "singular":
-      self.alpha = np.pi * self.J2 * 2.0 ** (j - 1.0)
-    else:
-      if j == 1:
-        self.alpha = self.J1 + 2.0 * self.J2 / (gamma - 1.0)
-      else:
-        self.alpha = (
-          (j - 1.0) * np.pi * (self.J1 + 2.0 * self.J2 / (gamma - 1.0))
-        )
+    # self.alpha = 1.0
+    self.energy_integral_()
 
     self.r_sh = self.r_shock_()
 
@@ -166,7 +162,9 @@ class Sedov:
     """
     Return shock radius (Eq 14)
     """
-    return (self.t * self.t * self.E / (self.rho0 * self.alpha)) ** (1.0 / self.j2w)  # equation (14)
+    return (self.t * self.t * self.E / (self.rho0 * self.alpha)) ** (
+      1.0 / self.j2w
+    )  # equation (14)
 
   def Integrand1_(self, V):  # equation (55) of K&T
     """
@@ -197,11 +195,57 @@ class Sedov:
 
   # End Integrand2
 
+  def energy_integral_(self):
+    """
+    return J1 and J2 energy integrals
+    """
+    self.J1 = 0.0
+    self.J2 = 0.0
+    self.alpha = 1.0
+    if self.family == "singular":  # singular case, integration is analytic
+      self.J1 = (self.gamma + 1.0) / (
+        self.j * ((self.gamma - 1.0) * self.j + 2.0) ** 2.0
+      )
+      self.J2 = 2.0 * self.J1 / (self.gamma - 1.0)
+      self.alpha = (
+        ((self.gamma + 1.0) / (self.gamma - 1.0))
+        * 2.0 ** (self.j)
+        / (self.j * ((self.gamma - 1.0) * self.j + 2.0) ** 2.0)
+      )
+      if self.j != 1.0:
+        self.alpha *= np.pi
+    else:  # standard and vacuum, integrate numerically
+      eps = self.V0 * np.finfo(float).eps
+      self.J1, err1 = integrate.quad(
+        self.Integrand1_, self.V0 + eps, self.V2, epsabs=eps
+      )
+      self.J2, err2 = integrate.quad(
+        self.Integrand2_, self.V0 + eps, self.V2, epsabs=eps
+      )
+
+      if self.family == "singular":
+        self.alpha = np.pi * self.J2 * 2.0 ** (self.j - 1.0)
+      else:
+        if self.j == 1:
+          self.alpha = self.J1 + 2.0 * self.J2 / (self.gamma - 1.0)
+        else:
+          self.alpha = (
+            (self.j - 1.0)
+            * np.pi
+            * (self.J1 + 2.0 * self.J2 / (self.gamma - 1.0))
+          )
+
+  # End energy_integral_
+
   def target_r_(self, V, rx):
     """
     Root find r = r_sh lambda(V) for V
     """
-    return self.r_sh * self.lambda_(V) - rx
+    # this is accounting for a factor of r in lambda for the singular case
+    fac = 1.0
+    if self.family == "singular":
+      fac = rx
+    return self.r_sh * fac * self.lambda_(V) - rx
 
   # End target_r_
 
@@ -210,6 +254,8 @@ class Sedov:
     self similar function lambda
     depends on solution family
     See Kamm & Timmes section 2
+    NOTE: The singular case is missing a factor of radius, because it's a pain to
+    pull through all of these functions. It's accounted for in other odd places.
     """
     x1 = self.a * V
     x2 = self.b * (self.c * V - 1.0)
@@ -320,7 +366,10 @@ class Sedov:
     ) and self.singularity == None:
       val = (
         x1 ** (self.alpha0 * self.w)
-        * x2 ** (max(eps, self.alpha3 + self.alpha2 * self.w))
+        * x2
+        ** (
+          max(eps, self.alpha3 + self.alpha2 * self.w)
+        )  # round off protection..
         * x3 ** (self.alpha4 + self.alpha1 * self.w)
         * x4 ** (self.alpha5)
       )
@@ -365,7 +414,6 @@ class Sedov:
     See Kamm & Timmes section 2
     """
     x1 = self.a * V
-    x2 = self.b * (self.c * V - 1.0)
     x3 = self.d * (1.0 - self.e * V)
     x4 = self.b * (1.0 - self.c * V / self.gamma)
 
@@ -374,7 +422,7 @@ class Sedov:
       self.family == "standard" or self.family == "vacuum"
     ) and self.singularity == None:
       val = (
-        x1 ** (self.alpha0 * self.w)
+        x1 ** (self.alpha0 * self.j)
         * x3 ** (self.alpha4 + self.alpha1 * (self.w - 2.0))
         * x4 ** (1.0 + self.alpha5)
       )
@@ -382,7 +430,7 @@ class Sedov:
       self.family == "standard" or self.family == "vacuum"
     ) and self.singularity == "w2":
       val = (
-        x1 ** (self.alpha0 * self.w)
+        x1 ** (self.alpha0 * self.j)
         * x3 ** (-self.j * self.gamma / (2.0 * self.e))
         * x4 ** (1.0 + self.alpha5)
       )
@@ -390,7 +438,7 @@ class Sedov:
       self.family == "standard" or self.family == "vacuum"
     ) and self.singularity == "w3":
       val = (
-        x1 ** (self.alpha0 * self.w)
+        x1 ** (self.alpha0 * self.j)
         * x4 ** ((self.j * (self.gamma - 1.0) - self.gamma) / self.e)
         * np.exp(
           -self.j
@@ -438,10 +486,16 @@ class Sedov:
     for i in range(len(self.r)):
       r = self.r[i]
       if r >= 0.0 and r < self.r_sh:  # shocked region
-        V_x = optimize.brentq(
-          self.target_r_, self.V0, self.V2, args=(r), xtol=1.0e-20
-        )
-        self.rho_sol[i] = self.rho_(V_x, rho2)
+        V_x = self.Vstar
+        if self.family != "singular":
+          V_x = optimize.brentq(
+            self.target_r_, self.V0, self.V2, args=(r), xtol=1.0e-20
+          )
+
+        # update post-shock state
+        # fac adjusts for missing r in singular lambda
+        fac = r if self.family == "singular" else 1.0
+        self.rho_sol[i] = fac * self.rho_(V_x, rho2)
         self.p_sol[i] = self.p_(V_x, rho2)
       else:  # unshocked region
         self.rho_sol[i] = self.rho0 * r ** (-self.w)
@@ -463,8 +517,6 @@ if __name__ == "__main__":
   t_end = 1.0
   r_model = 1.0
   sedov = Sedov(j, w, E, rho0, p0, gamma, t_end, r_model)
-  print(
-    f"alpha, J1, J2 r_sh = {sedov.alpha}, {sedov.J1}, {sedov.J2}, {sedov.r_sh}"
-  )
+  print(sedov.alpha)
 
 # End main
