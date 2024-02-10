@@ -23,6 +23,7 @@ class Sedov:
     w (float) : Density power law index
     E (float) : Explosion energy
     rho0 (float) : Ambient density
+    p0 (float) : Ambient pressure
     gamma (float) : adiabatic index
     t_end (float) : end time
     r_model (float) : radial extent
@@ -32,14 +33,14 @@ class Sedov:
     self.rho_sol (np.array) holds solution density profile
 
   Usage:
-    >>> sedov = Sedov(j, w, Eexp, rho0, gamma, t_end, r_model)
+    >>> sedov = Sedov(j, w, Eexp, rho0, p0, gamma, t_end, r_model)
     >>> rho_solution = sedov.rho_sol
 
   TODO:
     - Add more quantities of interest.
   """
 
-  def __init__(self, j, w, E, rho0, gamma, t_end, r_model):
+  def __init__(self, j, w, E, rho0, p0, gamma, t_end, r_model):
     assert (
       j == 1 or j == 2 or j == 3
     ), "Please select an appropriate geometry (j=1,2,3)"
@@ -49,6 +50,7 @@ class Sedov:
     self.w = w
     self.E = E
     self.rho0 = rho0
+    self.p0 = p0
     self.gamma = gamma
     self.t_end = t_end
     self.r_model = r_model
@@ -56,7 +58,8 @@ class Sedov:
     # set up grid
     npoints_r = 32768
     self.r = np.linspace(0.0, r_model, npoints_r)
-    self.rho_sol = np.zeros(npoints_r)
+    self.rho_sol = np.zeros(npoints_r)  # density solution
+    self.p_sol = np.zeros(npoints_r)  # pressure solution
     self.t = t_end
 
     # other stuff
@@ -87,6 +90,9 @@ class Sedov:
     self.V2 = 4.0 / (j2w * (gamma + 1.0))  # after equation (17)
     self.V0 = 2.0 / (gamma * j2w)  # equation (23)
 
+    # the ennergy integrals can contain singularities at the lower bound.
+    # for now, offset by machine epsilon to avoid.
+    # TODO: Implement singularity removal ala https://cococubed.com/papers/la-ur-07-2849.pdf
     eps = np.finfo(float).eps
     result1, err1 = integrate.quad(self.Integrand1_, self.V0 + eps, self.V2)
     result2, err2 = integrate.quad(self.Integrand2_, self.V0 + eps, self.V2)
@@ -112,6 +118,7 @@ class Sedov:
     print(f"Geometric index   : {self.j}")
     print(f"Explosion energy  : {self.E}")
     print(f"rho0              : {self.rho0}")
+    print(f"p0                : {self.p0}")
     print(f"Density power law : {self.w}")
     print(f"Adiabatic index   : {self.gamma}")
     print(f"t_end             : {self.t_end}")
@@ -200,7 +207,7 @@ class Sedov:
 
   def rho_(self, V, rho2):  # equation (40)
     """
-    Returns density
+    Returns post shock density (Eq 40)
     """
     x1 = self.a * V
     x2 = self.b * (self.c * V - 1.0)
@@ -216,6 +223,23 @@ class Sedov:
 
   # End rho_
 
+  def p_(self, V, p2):
+    """
+    Calculate post shock pressure (Eq 41)
+    """
+    x1 = self.a * V
+    x2 = self.b * (self.c * V - 1.0)
+    x3 = self.d * (1.0 - self.e * V)
+    x4 = self.b * (1.0 - self.c * V / self.gamma)
+    return (
+      p2
+      * x1 ** (self.alpha0 * self.j)
+      * x3 ** (self.alpha4 + self.alpha1 * (self.w - 2.0))
+      * x4 ** (1.0 + self.alpha5)
+    )
+
+  # End p_
+
   def rho2(self, rho1):
     """
     Eq 13
@@ -228,16 +252,16 @@ class Sedov:
     """
     rho1 = self.rho0 * self.r_sh ** (-self.w)
     rho2 = self.rho2(rho1)  # equation (13)
-    CUTOFF_ = 0.001  # below 0.3 * r_shock, set density to 0.0
+
     for i in range(len(self.r)):
       r = self.r[i]
-      if r < CUTOFF_ * self.r_sh:
-        self.rho_sol[i] = 0.0
-      elif r >= CUTOFF_ * self.r_sh and r < self.r_sh:  # do work here
+      if r >= 0.0 and r < self.r_sh:  # shocked region
         V_x = optimize.brentq(self.target_r_, self.V0, self.V2, args=(r))
         self.rho_sol[i] = self.rho_(V_x, rho2)
-      else:  # unshocked regio
+        self.p_sol[i] = self.p_(V_x, rho2)
+      else:  # unshocked region
         self.rho_sol[i] = rho1
+        self.p_sol[i] = self.p0
 
   # End Solve_
 
@@ -250,10 +274,11 @@ if __name__ == "__main__":
   w = 0.0
   E = 1.0
   rho0 = 1.0
+  p0 = 1.0e-5
   gamma = 1.4
   t_end = 0.5
   r_model = 1.0
-  sedov = Sedov(j, w, E, rho0, gamma, t_end, r_model)
+  sedov = Sedov(j, w, E, rho0, p0, gamma, t_end, r_model)
   print(sedov)
 
 # End main
