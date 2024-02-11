@@ -533,6 +533,6 @@ if __name__ == "__main__":
   t_end = 1.0
   r_model = 1.0
   sedov = Sedov(j, w, E, rho0, p0, gamma, t_end, r_model)
-  print(sedov.alpha)
+  print(f"DEBUG: alpha  -{sedov.alpha}")
 
 # End main
