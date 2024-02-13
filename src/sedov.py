@@ -271,7 +271,7 @@ class Sedov:
     NOTE: The singular case is missing a factor of radius, because it's a pain to
     pull through all of these functions. It's accounted for in other odd places.
     """
-    eps = 1.0e-30
+    eps = 1.0e-60
     x1 = self.a * V
     x2 = self.b * max(eps, self.c * V - 1.0)
     x3 = self.d * (1.0 - self.e * V)
@@ -304,7 +304,7 @@ class Sedov:
     Compute d lambda / dV for energy integral
     See Kamm & Timmes section 2
     """
-    eps = 1.0e-30
+    eps = 1.0e-60
     x1 = self.a * V
     x2 = self.b * max(eps, self.c * V - 1.0) + eps
     x3 = self.d * (1.0 - self.e * V)
@@ -370,7 +370,7 @@ class Sedov:
     depends on solution family
     See Kamm & Timmes section 2
     """
-    eps = 1.0e-30
+    eps = 1.0e-60
     x1 = self.a * V
     x2 = self.b * max(eps, self.c * V - 1.0)
     x3 = self.d * (1.0 - self.e * V)
@@ -504,7 +504,7 @@ class Sedov:
         V_x = self.Vstar  # singular case
         if self.family != "singular":
           vmin = 0.9 * self.V0 if self.family == "standard" else self.V2
-          vmax = self.V2 if self.family == "standard" else 2.0 / self.j2w
+          vmax = 1.0 * self.V2 if self.family == "standard" else 2.0 / self.j2w
           V_x = optimize.brenth(
             self.target_r_, vmin, vmax, args=(r), xtol=1.0e-20
           )
