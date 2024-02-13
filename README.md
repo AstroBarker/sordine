@@ -4,14 +4,11 @@ Contributions welcome.
 
 # [Sedov-Taylor blast wave](src/sedov.py)
 Self-similar solution for the Sedov-Taylor non-relativistic blast wave.
-Based on work by [James R. Kamm](https://cococubed.com/papers/kamm_2000.pdf).
+Based on work by [James R. Kamm](https://cococubed.com/papers/kamm_2000.pdf) and [Kamm & Timmes](https://cococubed.com/papers/la-ur-07-2849.pdf).
 Supports density profiles of the from $\rho(r) = \rho_{0} r^{-w}$.
 Supports planar (`j = 1`), cylindrical (`j = 2`), and spherical (`j = 3`) geometries.
 There are constraints on the density power law index. 
 See the paper.
-
-## TODO
-The "singular" and "vacuum" states are not implemented, i.e., the density power law index is quite constrained.
 
 ## Usage
 ```python
@@ -21,7 +18,10 @@ r = sedov.r
 rho_sol = sedov.rho_sol
 # plot away
 ```
-Self similar solutions for pressure, as well as similarity variables, still need to be implemented.
+
+## TODO:
+- Some solutions, such as velocity, still need implementation.
+- Unit test against [`sedov3`](https://cococubed.com/research_pages/sedov.shtml).
 
 ![Self similar density profiles](sedov.png "Sedov density profiles")
 
