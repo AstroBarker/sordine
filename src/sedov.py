@@ -54,15 +54,15 @@ class Sedov:
     self.rho0 = rho0
     self.p0 = p0
     self.gamma = gamma
-    self.t_end = t_end
+    self.t = t_end
     self.r_model = r_model
 
     # set up grid
     npoints_r = 2048
-    self.r = np.linspace(0.0, r_model, npoints_r, dtype=np.longdouble)
+    r_min = 1.0e-5  # avoid r = 0
+    self.r = np.linspace(r_min, r_model, npoints_r, dtype=np.longdouble)
     self.rho_sol = np.zeros(npoints_r, dtype=np.longdouble)  # density solution
     self.p_sol = np.zeros(npoints_r)  # pressure solution
-    self.t = t_end
 
     # other stuff
     j2w = j + 2.0 - w
@@ -123,8 +123,10 @@ class Sedov:
     self.alpha4 = self.alpha1 * (j - w) * j2w / (w3 - w)
     self.alpha5 = (w * (gamma + 1.0) - 2.0 * j) / (w3 - w)
 
+    # perform energy entegral, stores alpha, J1, J2
     self.energy_integral_()
 
+    # shock position
     self.r_sh = self.r_shock_()
 
     # deal with vacuum radius
@@ -148,7 +150,7 @@ class Sedov:
     print(f"p0                : {self.p0}")
     print(f"Density power law : {self.w}")
     print(f"Adiabatic index   : {self.gamma}")
-    print(f"t_end             : {self.t_end}")
+    print(f"t                 : {self.t}")
     print(f"r_model           : {self.r_model}")
     return ""
 
@@ -269,8 +271,9 @@ class Sedov:
     NOTE: The singular case is missing a factor of radius, because it's a pain to
     pull through all of these functions. It's accounted for in other odd places.
     """
+    eps = 1.0e-30
     x1 = self.a * V
-    x2 = self.b * (self.c * V - 1.0)
+    x2 = self.b * max(eps, self.c * V - 1.0)
     x3 = self.d * (1.0 - self.e * V)
 
     val = 0.0
@@ -301,8 +304,9 @@ class Sedov:
     Compute d lambda / dV for energy integral
     See Kamm & Timmes section 2
     """
+    eps = 1.0e-30
     x1 = self.a * V
-    x2 = self.b * (self.c * V - 1.0)
+    x2 = self.b * max(eps, self.c * V - 1.0) + eps
     x3 = self.d * (1.0 - self.e * V)
     x4 = self.b * (1.0 - self.c * V / self.gamma)
     dx1dv = self.a
@@ -368,7 +372,7 @@ class Sedov:
     """
     eps = 1.0e-30
     x1 = self.a * V
-    x2 = self.b * (self.c * V - 1.0)
+    x2 = self.b * max(eps, self.c * V - 1.0)
     x3 = self.d * (1.0 - self.e * V)
     x4 = self.b * (1.0 - self.c * V / self.gamma)
 
@@ -378,10 +382,7 @@ class Sedov:
     ) and self.singularity == None:
       val = (
         x1 ** (self.alpha0 * self.w)
-        * x2
-        ** (
-          max(eps, self.alpha3 + self.alpha2 * self.w)
-        )  # round off protection..
+        * x2 ** (self.alpha3 + self.alpha2 * self.w)  # round off protection..
         * x3 ** (self.alpha4 + self.alpha1 * self.w)
         * x4 ** (self.alpha5)
       )
@@ -502,9 +503,9 @@ class Sedov:
       if r >= 0.0 and r < self.r_sh:  # shocked region
         V_x = self.Vstar  # singular case
         if self.family != "singular":
-          vmin = self.V0 if self.family == "standard" else self.V2
+          vmin = 0.9 * self.V0 if self.family == "standard" else self.V2
           vmax = self.V2 if self.family == "standard" else 2.0 / self.j2w
-          V_x = optimize.brentq(
+          V_x = optimize.brenth(
             self.target_r_, vmin, vmax, args=(r), xtol=1.0e-20
           )
 
