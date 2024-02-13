@@ -5,10 +5,45 @@
  Author: Brandon L. Barker
 """
 
+from enum import Enum
 
 import numpy as np
 import scipy.integrate as integrate  # quad
 from scipy import optimize  # brentq, root
+
+
+class Family(Enum):
+  """
+  Enum class to act as type of solution
+  Names:
+    standard
+    singular
+    vacuum
+  """
+
+  standard = 0
+  singular = 1
+  vacuum = 2
+
+
+# End Family
+
+
+class Singularity(Enum):
+  """
+  Enum class to hold singularity type
+  Names:
+    none
+    omega2
+    omega3
+  """
+
+  none = 0
+  omega2 = 1
+  omega3 = 2
+
+
+# End Singularity
 
 
 class Sedov:
@@ -38,8 +73,6 @@ class Sedov:
 
   TODO:
     - Add velocity solution
-    - Extend to singular and vacuum
-    - enums for fmaily etc
   """
 
   def __init__(self, j, w, E, rho0, p0, gamma, t_end, r_model):
@@ -76,35 +109,34 @@ class Sedov:
     # Following Kamm & Timmes, introduce TOL in logic for determining solution family
     # limits exponents later to not blow up
     TOL = 1.0e-5
-    solution_type = ""
+    self.family = Family.standard
     if self.V2 < self.Vstar - TOL:
-      solution_type = "standard"
+      self.family = Family.standard
     elif self.V2 > self.Vstar + TOL:
-      solution_type = "vacuum"
+      self.family = Family.vacuum
     elif abs(self.V2 - self.Vstar) < TOL:
-      solution_type = "singular"
+      self.family = Family.singular
     else:
       raise ValueError(
         "Something weird has happened: initial condition does not correspond to any solution family"
       )
-    self.family = solution_type
 
     # Check for removable singularities
-    self.singularity = None
+    self.singularity = Singularity.none
     w1 = (3.0 * j - 2.0 + gamma * (2.0 - j)) / (gamma + 1.0)
     w2 = (2.0 * (gamma - 1.0) + j) / gamma
     w3 = j * (2.0 - gamma)
     if abs(w - w2) < TOL:
-      self.singularity = "w2"
+      self.singularity = Singularity.omega2
     if abs(w - w3) < TOL:
-      self.singularity = "w3"
+      self.singularity = Singularity.omega3
 
     # Equations (33)-(37)
     self.a = j2w * (gamma + 1.0) / 4.0
     self.b = (gamma + 1.0) / (gamma - 1.0)
     self.c = j2w * gamma / 2.0
-    if self.family == "singular":
-      self.d = 1.0
+    if self.family == Family.singular:
+      self.d = 1.0  # unused in singular case but avoids div by 0
     else:
       self.d = (j2w * (gamma + 1.0)) / (
         j2w * (gamma + 1.0) - 2.0 * (2.0 + j * (gamma - 1.0))
@@ -131,7 +163,7 @@ class Sedov:
 
     # deal with vacuum radius
     self.r_vac = 0.0
-    if self.family == "vacuum":
+    if self.family == Family.vacuum:
       V_vac = 2.0 / self.j2w
       self.r_vac = optimize.brentq(
         self.target_v_, 1.0e-10, self.r_sh, args=(V_vac), xtol=1.0e-20
@@ -152,6 +184,8 @@ class Sedov:
     print(f"Adiabatic index   : {self.gamma}")
     print(f"t                 : {self.t}")
     print(f"r_model           : {self.r_model}")
+    print(f"Solution family   : {self.family}")
+    print(f"Singularity       : {self.singularity}")
     return ""
 
   # End __str__
@@ -205,7 +239,7 @@ class Sedov:
     self.J2 = 0.0
     self.alpha = 1.0
 
-    if self.family == "singular":  # singular case, integration is analytic
+    if self.family == Family.singular:  # singular case, integration is analytic
       self.J1 = (self.gamma + 1.0) / (
         self.j * ((self.gamma - 1.0) * self.j + 2.0) ** 2.0
       )
@@ -220,7 +254,7 @@ class Sedov:
 
     else:  # standard and vacuum, integrate numerically
       eps = self.V0 * np.finfo(float).eps
-      vmin = 2.0 / self.j2w if self.family == "vacuum" else self.V0
+      vmin = 2.0 / self.j2w if self.family == Family.vacuum else self.V0
       self.J1, err1 = integrate.quad(
         self.Integrand1_, vmin + eps, self.V2, epsabs=eps
       )
@@ -228,7 +262,7 @@ class Sedov:
         self.Integrand2_, vmin + eps, self.V2, epsabs=eps
       )
 
-      if self.family == "singular":
+      if self.family == Family.singular:
         self.alpha = np.pi * self.J2 * 2.0 ** (self.j - 1.0)
       else:
         if self.j == 1:
@@ -247,7 +281,7 @@ class Sedov:
     Root find r = r_sh lambda(V) for V
     """
     # fac accounts for a factor of r in lambda for the singular case
-    fac = 1.0 if self.family != "singular" else rx
+    fac = 1.0 if self.family != Family.singular else rx
     return self.r_sh * fac * self.lambda_(V) - rx
 
   # End target_r_
@@ -258,7 +292,7 @@ class Sedov:
     Root find r_vac = r_sh lambda(V_vac) for r_vac
     """
     # fac accounts for a factor of r in lambda for the singular case
-    fac = 1.0 if self.family != "singular" else rx
+    fac = 1.0 if self.family != Family.singular else rx
     return self.r_sh * fac * self.lambda_(V_vac) - rx
 
   # End target_v_
@@ -278,12 +312,12 @@ class Sedov:
 
     val = 0.0
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity != "w2":
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity != Singularity.omega2:
       val = x1 ** (-self.alpha0) * x2 ** (-self.alpha2) * x3 ** (-self.alpha1)
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity == "w2":
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity == Singularity.omega2:
       val = (
         x1 ** (-self.alpha0)
         * x2 ** ((self.gamma - 1.0) / (2.0 * self.e))
@@ -293,7 +327,7 @@ class Sedov:
           / ((2.0 * self.e) * (x1 - (self.gamma + 1) / (2.0 * self.gamma)))
         )
       )
-    if self.family == "singular":
+    if self.family == Family.singular:
       val = 1.0 / self.r_sh  # scale by r elsewhere
     return val
 
@@ -316,16 +350,16 @@ class Sedov:
     lam = self.lambda_(V)
     dlamdv = 0.0
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity == None:
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity == Singularity.none:
       dlamdv = -(
         (self.alpha0 * dx1dv / x1)
         + (self.alpha2 * dx2dv / x2)
         + (self.alpha1 * dx3dv / x3)
       )
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity == "w2":
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity == Singularity.omega2:
       term1 = self.alpha0 * dx1dv / x1
       term2 = (self.gamma - 1.0) * dx2dv / (2.0 * self.e * x2)
       term3 = -(self.gamma + 1.0) * dx1dv / (2.0 * self.e)
@@ -333,14 +367,14 @@ class Sedov:
       term5 = 1.0 + (1.0 - x1) / (x1 - (self.gamma + 1.0) / (2.0 * self.gamma))
       dlamdv = -(term1 + term2 + term3 * term4 * term5)
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity == "w3":
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity == Singularity.omega3:
       dlamdv = -(
         (self.alpha0 * dx1dv / x1)
         + (self.alpha2 * dx2dv / x2)
         + (self.alpha1 * dx4dv / x4)
       )
-    if self.family == "singular":
+    if self.family == Family.singular:
       dlamdv = 0.0
     return lam * dlamdv
 
@@ -355,10 +389,10 @@ class Sedov:
     x1 = self.a * V
     val = 0.0
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity != "w2":
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity != Singularity.omega2:
       val = x1 * self.lambda_(V)
-    if self.family == "singular":
+    if self.family == Family.singular:
       val = self.lambda_(V)
     return val
 
@@ -378,8 +412,8 @@ class Sedov:
 
     val = 0.0
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity == None:
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity == Singularity.none:
       val = (
         x1 ** (self.alpha0 * self.w)
         * x2 ** (self.alpha3 + self.alpha2 * self.w)  # round off protection..
@@ -387,8 +421,8 @@ class Sedov:
         * x4 ** (self.alpha5)
       )
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity == "w2":
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity == Singularity.omega2:
       val = (
         x1 ** (self.alpha0 * self.w)
         * x2 ** (4.0 - self.j - 2.0 * self.gamma / (2.0 * self.e))
@@ -400,8 +434,8 @@ class Sedov:
         )
       )
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity == "w3":
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity == Singularity.omega3:
       val = (
         x1 ** (self.alpha0 * self.w)
         * x2 ** (self.alpha3 + self.alpha2 * self.w)
@@ -414,7 +448,7 @@ class Sedov:
           / ((2.0 * self.e) * ((self.gamma + 1.0) / 2.0 - x1))
         )
       )
-    if self.family == "singular":
+    if self.family == Family.singular:
       val = self.lambda_(V) ** (self.j - 2.0)
     return val
 
@@ -432,24 +466,24 @@ class Sedov:
 
     val = 0.0
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity == None:
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity == Singularity.none:
       val = (
         x1 ** (self.alpha0 * self.j)
         * x3 ** (self.alpha4 + self.alpha1 * (self.w - 2.0))
         * x4 ** (1.0 + self.alpha5)
       )
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity == "w2":
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity == Singularity.omega2:
       val = (
         x1 ** (self.alpha0 * self.j)
         * x3 ** (-self.j * self.gamma / (2.0 * self.e))
         * x4 ** (1.0 + self.alpha5)
       )
     if (
-      self.family == "standard" or self.family == "vacuum"
-    ) and self.singularity == "w3":
+      self.family == Family.standard or self.family == Family.vacuum
+    ) and self.singularity == Singularity.omega3:
       val = (
         x1 ** (self.alpha0 * self.j)
         * x4 ** ((self.j * (self.gamma - 1.0) - self.gamma) / self.e)
@@ -461,7 +495,7 @@ class Sedov:
           / ((2.0 * self.e) * ((self.gamma + 1.0) / 2.0 - x1))
         )
       )
-    if self.family == "singular":
+    if self.family == Family.singular:
       val = self.lambda_(V) ** (self.j)
     return val
 
@@ -498,20 +532,22 @@ class Sedov:
 
     for i in range(len(self.r)):
       r = self.r[i]
-      if self.family == "vacuum" and r < self.r_vac:
+      if self.family == Family.vacuum and r < self.r_vac:
         continue
       if r >= 0.0 and r < self.r_sh:  # shocked region
         V_x = self.Vstar  # singular case
-        if self.family != "singular":
-          vmin = 0.9 * self.V0 if self.family == "standard" else self.V2
-          vmax = 1.0 * self.V2 if self.family == "standard" else 2.0 / self.j2w
+        if self.family != Family.singular:
+          vmin = 0.9 * self.V0 if self.family == Family.standard else self.V2
+          vmax = (
+            1.0 * self.V2 if self.family == Family.standard else 2.0 / self.j2w
+          )
           V_x = optimize.brenth(
             self.target_r_, vmin, vmax, args=(r), xtol=1.0e-20
           )
 
         # update post-shock state
         # fac adjusts for missing r in singular lambda
-        fac = r if self.family == "singular" else 1.0
+        fac = r if self.family == Family.singular else 1.0
         self.rho_sol[i] = fac * self.rho_(V_x, rho2)
         self.p_sol[i] = fac * self.p_(V_x, rho2)
       else:  # unshocked region
@@ -534,6 +570,6 @@ if __name__ == "__main__":
   t_end = 1.0
   r_model = 1.0
   sedov = Sedov(j, w, E, rho0, p0, gamma, t_end, r_model)
-  print(f"DEBUG: alpha  -{sedov.alpha}")
+  print(sedov)
 
 # End main
