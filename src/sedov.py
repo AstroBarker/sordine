@@ -15,7 +15,7 @@ from scipy import optimize  # brentq, root
 class Family(Enum):
   """
   Enum class to act as type of solution
-  Names:
+  Values:
     standard
     singular
     vacuum
@@ -32,7 +32,7 @@ class Family(Enum):
 class Singularity(Enum):
   """
   Enum class to hold singularity type
-  Names:
+  Values:
     none
     omega2
     omega3
@@ -50,11 +50,13 @@ class Sedov:
   """
   Class for constructing Sedov solution
   See https://cococubed.com/papers/kamm_2000.pdf
+  and https://cococubed.com/papers/la-ur-07-2849.pdf
 
   Assumes density profile of form rho(r) = rho0 * r^(-w)
+  Allows planar (j = 1), cylindrical (j = 2), and spherical (j = 3) geometries.
 
   Args:
-    j (float) : Dimension index (1: planar, 2: cylindrical. 3: spherical)
+    j (float) : Dimension index (1: planar, 2: cylindrical, 3: spherical)
     w (float) : Density power law index
     E (float) : Explosion energy
     rho0 (float) : Ambient density
@@ -66,6 +68,7 @@ class Sedov:
   Attributes:
     self.r (np.array) : radial grid
     self.rho_sol (np.array) holds solution density profile
+    self.p_sol (np.array) holds solution pressure profile
 
   Usage:
     >>> sedov = Sedov(j, w, Eexp, rho0, p0, gamma, t_end, r_model)
