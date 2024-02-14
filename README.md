@@ -53,3 +53,4 @@ Rules are listed in [ruff.toml](ruff.toml).
 To check all python in the current directory, you may `ruff .`.
 To format a given file according to `ruff.toml`, run `ruff format file.py`.
 Checks for formatting are performed on each push / PR.
+We (try to) adhere to [semantic versioning](https://semver.org/) and [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/).
