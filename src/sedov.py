@@ -126,7 +126,7 @@ class Sedov:
 
     # Check for removable singularities
     self.singularity = Singularity.none
-    w1 = (3.0 * j - 2.0 + gamma * (2.0 - j)) / (gamma + 1.0)
+    #w1 = (3.0 * j - 2.0 + gamma * (2.0 - j)) / (gamma + 1.0)
     self.w2 = (2.0 * (gamma - 1.0) + j) / gamma
     self.w3 = j * (2.0 - gamma)
     if abs(w - self.w2) < TOL:
@@ -558,8 +558,9 @@ class Sedov:
 
         # update post-shock state
         # fac adjusts for missing r in singular lambda
-        fac = r if self.family == Family.singular else 1.0
+        fac = r**(self.j - 2.0) if self.family == Family.singular else 1.0
         self.rho_sol[i] = fac * self.rho_(V_x, rho2)
+        fac = r**(self.j) if self.family == Family.singular else 1.0
         self.p_sol[i] = fac * self.p_(V_x, p2)
       else:  # unshocked region
         self.rho_sol[i] = self.rho0 * r ** (-self.w)
