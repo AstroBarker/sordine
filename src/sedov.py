@@ -96,8 +96,8 @@ class Sedov:
     # set up grid
     npoints_r = 2048
     r_min = 1.0e-5  # avoid r = 0
-    self.r = np.linspace(r_min, r_model, npoints_r, dtype=np.longdouble)
-    self.rho_sol = np.zeros(npoints_r, dtype=np.longdouble)  # density solution
+    self.r = np.linspace(r_min, r_model, npoints_r)
+    self.rho_sol = np.zeros(npoints_r)  # density solution
     self.p_sol = np.zeros(npoints_r)  # pressure solution
 
     # other stuff
@@ -538,6 +538,8 @@ class Sedov:
     """
     rho1 = self.rho0 * self.r_sh ** (-self.w)
     rho2 = self.rho2(rho1)  # equation (13)
+    v_sh = 2.0 * self.r_sh / (self.j2w * self.t)
+    p2 = 2.0 * rho1 * v_sh * v_sh / (self.gamma + 1.0)
 
     for i in range(len(self.r)):
       r = self.r[i]
@@ -558,7 +560,7 @@ class Sedov:
         # fac adjusts for missing r in singular lambda
         fac = r if self.family == Family.singular else 1.0
         self.rho_sol[i] = fac * self.rho_(V_x, rho2)
-        self.p_sol[i] = fac * self.p_(V_x, rho2)
+        self.p_sol[i] = fac * self.p_(V_x, p2)
       else:  # unshocked region
         self.rho_sol[i] = self.rho0 * r ** (-self.w)
         self.p_sol[i] = self.p0
