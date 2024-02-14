@@ -9,7 +9,7 @@ def plot_density():
   """
   hacky plot density stuff.
   """
-  w = np.linspace(1.0, 2.75, 18)
+  w = np.linspace(1.0, 2.75, 24)
   w = np.insert(w, 0, 0.0)
   w = np.insert(w, 0, 2.0)
 
