@@ -76,10 +76,13 @@ class Sedov:
   """
 
   def __init__(self, j, w, E, rho0, p0, gamma, t_end, r_model):
+    # Various checks for a physical solution or realistic
     assert (
       j == 1 or j == 2 or j == 3
     ), "Please select an appropriate geometry (j=1,2,3)"
     assert E > 0.0, "Explosion energy must be positive"
+    assert w > 0.0, "Density power law index w must be positive"
+    assert w < j, "Must have w < j for finite mass."
 
     self.j = j
     self.w = w
@@ -124,11 +127,11 @@ class Sedov:
     # Check for removable singularities
     self.singularity = Singularity.none
     w1 = (3.0 * j - 2.0 + gamma * (2.0 - j)) / (gamma + 1.0)
-    w2 = (2.0 * (gamma - 1.0) + j) / gamma
-    w3 = j * (2.0 - gamma)
-    if abs(w - w2) < TOL:
+    self.w2 = (2.0 * (gamma - 1.0) + j) / gamma
+    self.w3 = j * (2.0 - gamma)
+    if abs(w - self.w2) < TOL:
       self.singularity = Singularity.omega2
-    if abs(w - w3) < TOL:
+    if abs(w - self.w3) < TOL:
       self.singularity = Singularity.omega3
 
     # Equations (33)-(37)
@@ -144,16 +147,22 @@ class Sedov:
     self.e = (2.0 + j * (gamma - 1.0)) / 2.0
 
     # Equations (42)-(47)
+    # The if logic below avoids divide by zero in the omega2, omega3 singularity cases.
+    # We avoid these singularities so no harm is done by modifying alpha2, alpha4, alpha5
+    denom2 = (
+      gamma * (self.w2 - w) if self.singularity != Singularity.omega2 else TOL
+    )
+    denom3 = (self.w3 - w) if self.singularity != Singularity.omega3 else TOL
     self.alpha0 = 2.0 / j2w
-    self.alpha2 = -(gamma - 1.0) / (gamma * (w2 - w))
+    self.alpha2 = -(gamma - 1.0) / denom2
     self.alpha1 = (
       (gamma * j2w)
       / (2.0 + j * (gamma - 1.0))
       * ((2.0 * (j * (2.0 - gamma) - w)) / (gamma * j2w**2) - self.alpha2)
     )
-    self.alpha3 = (j - w) / (gamma * (w2 - w))
-    self.alpha4 = self.alpha1 * (j - w) * j2w / (w3 - w)
-    self.alpha5 = (w * (gamma + 1.0) - 2.0 * j) / (w3 - w)
+    self.alpha3 = (j - w) / denom2
+    self.alpha4 = self.alpha1 * (j - w) * j2w / denom3
+    self.alpha5 = (w * (gamma + 1.0) - 2.0 * j) / denom3
 
     # perform energy entegral, stores alpha, J1, J2
     self.energy_integral_()
@@ -166,7 +175,7 @@ class Sedov:
     if self.family == Family.vacuum:
       V_vac = 2.0 / self.j2w
       self.r_vac = optimize.brentq(
-        self.target_v_, 1.0e-10, self.r_sh, args=(V_vac), xtol=1.0e-20
+        self.target_v_, self.r[0], self.r_sh, args=(V_vac), xtol=1.0e-20
       )
 
     # Do the solve
@@ -561,14 +570,14 @@ class Sedov:
 
 if __name__ == "__main__":
   # example:
-  j = 3
-  w = 2.4
-  E = 5.45670
+  j = 2
+  w = 1.99
+  E = 1.0
   rho0 = 1.0
   p0 = 1.0e-5
   gamma = 1.4
   t_end = 1.0
-  r_model = 1.0
+  r_model = 1.2
   sedov = Sedov(j, w, E, rho0, p0, gamma, t_end, r_model)
   print(sedov)
 
