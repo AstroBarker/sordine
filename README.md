@@ -19,9 +19,17 @@ rho_sol = sedov.rho_sol
 # plot away
 ```
 
+## Testing
+We include `test.py` that implements tests for the Sedov-Taylor solutions.
+For this test we set up a grid in geometry, density power law space.
+To test, we download and compile the `sedov3` [code](https://cococubed.com/research_pages/sedov.shtml) 
+provided by Frank Timmes.
+We compare our solution to his.
+This is triggered on every push / PR, and you can invoke by, e.g., `pytest src/test.py`.
+In the future it should test other solutions.
+
 ## TODO:
 - Some solutions, such as velocity, still need implementation.
-- Unit test against [`sedov3`](https://cococubed.com/research_pages/sedov.shtml).
 
 ![Self similar density profiles](sedov.png "Sedov density profiles")
 
@@ -43,3 +51,4 @@ Code linting and formatting is done with [ruff](https://docs.astral.sh/ruff/).
 Rules are listed in [ruff.toml](ruff.toml).
 To check all python in the current directory, you may `ruff .`.
 To format a given file according to `ruff.toml`, run `ruff format file.py`.
+Checks for formatting are performed on each push / PR.
