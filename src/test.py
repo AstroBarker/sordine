@@ -76,6 +76,22 @@ def omega_from_j_gamma(n_per_j, j, gamma):
 
 # End omega_from_j_gamma
 
+def compare_sedov(x, rho, p, x_sol, rho_sol, p_sol):
+  """
+  Compare out solution to sedov3.
+  Interpolate their grid to ours, compute norm
+  """
+
+  new_rho_sol = np.interp(x, x_sol, rho_sol)
+  new_p_sol = np.interp(x, x_sol, p_sol)
+
+  # L2 norm
+  err_rho = np.sum( np.power(new_rho_sol - rho, 1.0) ) / len(rho)
+  err_p = np.sum( np.power(new_p_sol - p, 1.0) ) / len(p)
+  return err_rho, err_p
+
+# End compare_sedov
+
 def test_sedov():
   """
   Test Sedov-Taylor against battle testing sedov3
@@ -119,6 +135,8 @@ def test_sedov():
       print(cmd)
       os.system(cmd)
       x_sol, rho_sol, p_sol = np.loadtxt(os.path.join(source_dir, outfile), skiprows=2, unpack=True, usecols=(1,2,4))
+      err_rho, err_p = compare_sedov(sedov.r, sedov.rho_sol, sedov.p_sol, x_sol, rho_sol, p_sol)
+      print(f"{err_rho}, {err_p}")
 
   #shutil.rmtree(TMPDIR)
 
