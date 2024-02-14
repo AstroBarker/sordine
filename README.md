@@ -41,3 +41,5 @@ pressure = bmk_solution.p # see also bmk_solution.f for similarity variable
 # Code Style
 Code linting and formatting is done with [ruff](https://docs.astral.sh/ruff/).
 Rules are listed in [ruff.toml](ruff.toml).
+To check all python in the current directory, you may `ruff .`.
+To format a given file according to `ruff.toml`, run `ruff format file.py`.
