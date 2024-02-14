@@ -81,7 +81,7 @@ class Sedov:
       j == 1 or j == 2 or j == 3
     ), "Please select an appropriate geometry (j=1,2,3)"
     assert E > 0.0, "Explosion energy must be positive"
-    assert w > 0.0, "Density power law index w must be positive"
+    assert w >= 0.0, "Density power law index w must be non-negative"
     assert w < j, "Must have w < j for finite mass."
 
     self.j = j
