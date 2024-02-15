@@ -8,6 +8,7 @@ import numpy as np
 
 from sedov import Sedov
 
+# === Helper functions for tests ===
 
 def prepare_sedov_test(TMPDIR):
   """
@@ -115,6 +116,9 @@ def compare_sedov(x, rho, p, x_sol, rho_sol, p_sol):
 
 
 # End compare_sedov
+
+
+# =================================
 
 
 def test_sedov():
