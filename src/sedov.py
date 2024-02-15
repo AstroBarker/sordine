@@ -112,7 +112,7 @@ class Sedov:
     self.Vstar = 2.0 / (self.j * (gamma - 1.0) + 2.0)  # Eq 19
     self.V0 = 2.0 / (gamma * j2w)  # equation (23)
 
-    # Following Kamm & Timmes, introduce TOL in logic for determining solution family
+    # Following Kamm & Timmes, introduce TOL in logic for solution family
     # limits exponents later to not blow up
     TOL = 1.0e-5
     self.family = Family.standard
@@ -124,7 +124,7 @@ class Sedov:
       self.family = Family.singular
     else:
       raise ValueError(
-        "Something weird has happened: initial condition does not correspond to any solution family"
+        "Weird: initial condition does not correspond to any solution family"
       )
 
     # Check for removable singularities
@@ -150,8 +150,8 @@ class Sedov:
     self.e = (2.0 + j * (gamma - 1.0)) / 2.0
 
     # Equations (42)-(47)
-    # The if logic below avoids divide by zero in the omega2, omega3 singularity cases.
-    # We avoid these singularities so no harm is done by modifying alpha2, alpha4, alpha5
+    # Logic below avoids divide by zero in omega2, omega3 singularity cases.
+    # We avoid these singularities so no harm is done by modifying exponents
     denom2 = (
       gamma * (self.w2 - w) if self.singularity != Singularity.omega2 else TOL
     )
@@ -244,14 +244,15 @@ class Sedov:
     return J1 and J2 energy integrals
     # the ennergy integrals can contain singularities at the lower bound.
     # for now, offset by machine epsilon to avoid.
-    # TODO: Implement singularity removal ala https://cococubed.com/papers/la-ur-07-2849.pdf
+    # TODO: Implement singularity removal ala 
+        https://cococubed.com/papers/la-ur-07-2849.pdf
     # TODO: set Vmin appropriately
     """
     self.J1 = 0.0
     self.J2 = 0.0
     self.alpha = 1.0
 
-    if self.family == Family.singular:  # singular case, integration is analytic
+    if self.family == Family.singular:  # singular case
       self.J1 = (self.gamma + 1.0) / (
         self.j * ((self.gamma - 1.0) * self.j + 2.0) ** 2.0
       )
@@ -314,8 +315,9 @@ class Sedov:
     self similar function lambda
     depends on solution family
     See Kamm & Timmes section 2
-    NOTE: The singular case is missing a factor of radius, because it's a pain to
-    pull through all of these functions. It's accounted for in other odd places.
+    NOTE: The singular case is missing a factor of radius. It's a pain to
+    pull through all of these functions. 
+    It's accounted for in other odd places.
     """
     eps = 1.0e-60
     x1 = self.a * V
