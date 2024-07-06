@@ -3,6 +3,12 @@ A musical mute and also a repository of Python 3.x [self-similar solutions](http
 Contributions welcome.
 A minimally working [environment file](environment.yml) is provided.
 
+# Requirements
+Numpy, scipy, astropy. Any versions fine.
+
+# TODO
+Would be nice to unify APIs for different tests, eventually...
+
 # [Sedov-Taylor blast wave](src/sedov.py)
 Self-similar solution for the Sedov-Taylor non-relativistic blast wave.
 Based on work by [James R. Kamm](https://cococubed.com/papers/kamm_2000.pdf) and [Kamm & Timmes](https://cococubed.com/papers/la-ur-07-2849.pdf).
@@ -10,6 +16,7 @@ Supports density profiles of the from $\rho(r) = \rho_{0} r^{-w}$.
 Supports planar (`j = 1`), cylindrical (`j = 2`), and spherical (`j = 3`) geometries.
 There are constraints on the density power law index. 
 See the paper.
+
 
 ## Usage
 ```python
@@ -46,6 +53,12 @@ bmk_solution = BMK(k, W, t, P0, t_shock, rad)
 rad = bmk_solution.r
 pressure = bmk_solution.p # see also bmk_solution.f for similarity variable
 ```
+
+# Thermal Equilibrium
+Radiation hydrodynamic problem testing rad-hydro coupling
+in a static, homogenous medium.
+Solution can be simplified to an ordinary differential equation under some assumptions.
+See [Turner and Stone](https://ui.adsabs.harvard.edu/abs/2001ApJS..135...95T/abstract).
 
 # Code Style
 Code linting and formatting is done with [ruff](https://docs.astral.sh/ruff/).
