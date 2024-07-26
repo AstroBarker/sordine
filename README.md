@@ -1,7 +1,7 @@
 # SOftwaRe valiDatIonN suitE (SORDINE)
 A musical mute and also a repository of Python 3.x [self-similar solutions](https://en.wikipedia.org/wiki/Self-similar_solution) that I've needed, and so written.
 Contributions welcome.
-A minimally working [environment file](environment.yml) is provided.
+Minimally working environment configurations are provided (`environment.yml` and `requirements.txt`).
 
 # Requirements
 Numpy, scipy, astropy. Any versions fine.
