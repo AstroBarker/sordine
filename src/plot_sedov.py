@@ -43,7 +43,7 @@ def plot_density():
     elif sedov.family == Family.singular:
       color = "#808000"
       style = "-"
-      label = r"Singular, $\omega = (y-\gamma)/(\gamma + 1)$"
+      label = r"Singular, $\omega = (7-\gamma)/(\gamma + 1)$"
     else:
       color = "#800080"
       style = "-."

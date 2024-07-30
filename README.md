@@ -4,7 +4,7 @@ Contributions welcome.
 Minimally working environment configurations are provided (`environment.yml` and `requirements.txt`).
 
 # Requirements
-Numpy, scipy, astropy. Any versions fine.
+Numpy, scipy, astropy. Any versions fine. Pytest for testing.
 
 # TODO
 Would be nice to unify APIs for different tests, eventually...
